@@ -53,8 +53,13 @@ While in Bitcoin the difficulty change is capped by factor 4, we have implemente
 == Emission Scheme
 
 Warthog was started without any premined or reserved amount of coins on June 29, 2023. The project implements a classical halving-based emission scheme with halvings occurring every 3153600 blocks (every 2 years). The emission for the next 4 years is summarized in the following table:
-
-#table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]))
+#figure(
+  caption: [Emission scheme],
+  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
+    ..for (.., Date,Lifetime, percent_emission) in emission {
+        (Date,Lifetime, percent_emission)
+    })
+  )
 
 
 There is no tail emission which means there is a hard cap of the amount in circulation. The hard cap is 18921599.68464 WART (around 19 million coins).
