@@ -110,8 +110,7 @@ This section allows miners to put 4 bytes of arbitrary data to affect the merkle
 
 #figure(
   caption: [Mining Section],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
-    [byte range], [content],
+  table(columns: 2, table.header([*byte range*], [*content*]), 
     [1-4], [arbitrary data])
 )
 === New address section
@@ -120,8 +119,7 @@ This section lists new addresses that receive payments in this block and therefo
 
 #figure(
   caption: [New Address Section],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
-    [byte range], [content],
+  table(columns: 2, table.header([*byte range*], [*content*]), 
     [1-4], [number  `n` of new addresses],
     [5-(4+n*20)], [`n` addressess of 20 bytes each]
   )
@@ -135,8 +133,7 @@ Mining reward is distributed to at least one reward address. (Need to be reworke
 
 #figure(
   caption: [Reward Section],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
-    [byte range], [content],
+  table(columns: 2, table.header([*byte range*], [*content*]), 
     [1-2], [number  `r` of reward entry],
     [3-(4+n*16)], [`r` reward entries]
   )
@@ -146,8 +143,7 @@ Every reward entry consists of 16 bytes:
 
 #figure(
   caption: [Reward entry],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
-    [byte range], [content],
+  table(columns: 2, table.header([*byte range*], [*content*]), 
     [1-8], [accountId],
     [9-16], [amount]
   )
@@ -163,8 +159,7 @@ The transfer section contains the transfers made in this block. Its binary outli
 
 #figure(
   caption: [Transfer Section],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
-    [byte range], [content],
+  table(columns: 2, table.header([*byte range*], [*content*]), 
     [1-4], [number `t` of transfer entries],
     [5-(4+t*99)], [`t` transfer entries]
   )
@@ -174,8 +169,7 @@ Every transfer entry has the following structure:
 
 #figure(
   caption: [Transfer structure],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
-    [byte range], [content],
+  table(columns: 2, table.header([*byte range*], [*content*]), 
     [1-8], [fromAccountId],
     [9-16], [pinNonce], 
     [17-18], [fee], 
