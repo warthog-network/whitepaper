@@ -1,7 +1,7 @@
 #import "template.typ": *
 #import "@preview/codelst:2.0.1": sourcecode
 
-#set outline(title: "Table of contents")
+#set outline(title: "Table of contents", indent: 1em)
 
 #let emission = csv("files/emission_scheme.csv")
 
@@ -11,7 +11,6 @@
   alt: "Whitepaper",
   affiliation: "University",
   date: datetime.today().display(),
-  //main-color: "4DA6FF",
   logo: image("./assets/SVGs/Circle/Warthog_2024_Circle Yellow.svg"),
   color-words: ("highlight", "important")
 ) 
@@ -43,8 +42,8 @@ For now and in the near future the primary plan is to make the node implementati
 == Retarget Logic
 Similarly to Bitcoin, the warthog blockchain will scale its difficulty periodically to adjust for changing hashrate. Changes in difficulty is partitioned into two phases:
 
-  -  In the initial phase the difficulty is adjusted every 720 blocks which corresponds to approximately 4 hours.
-  -  In the second phase the difficulty is adjusted every 8640 blocks which corresponds to 2 days.
+  +  In the initial phase the difficulty is adjusted every 720 blocks which corresponds to approximately 4 hours.
+  +  In the second phase the difficulty is adjusted every 8640 blocks which corresponds to 2 days.
 
 The reason for this two-phase approach is the high variability of hashrate in early stages of a project's life which initially requires a more frequent difficulty adjustment. On the other hand too short intervals also have disadvantages such as the tendency to oscillate and a possibly higher impact of faked timestamps. Therefore the second phase stretches the difficulty adjustment interval after the initial phase.
 
@@ -61,13 +60,13 @@ Warthog was started without any premined or reserved amount of coins on June 29,
     })
   )
 
-There is no tail emission which means there is a hard cap of the amount in circulation. The hard cap is 18921599.68464 WART (around 19 million coins).
+There is no tail emission which means there is a hard cap of the amount in circulation. The hard cap is `18921599.68464 WART` (around 19 million coins).
 
-Before halving occurs every block yields 3 WART as miner reward. Since the block time is 20 seconds, every day approximately 60/20 × 60 × 24 = 4320 blocks and 12960 WART are mined before halving.
+Before halving occurs every block yields 3 WART as miner reward. Since the block time is 20 seconds, every day approximately $60/20 × 60 × 24 = 4320$ blocks and `12960 WART` are mined daily before halving.
 
 == Coin Precision
 
-The reference implementation uses the C++ data type `uint64_t` for storing amounts of WART. This is a 64 bit unsigned integer. To represent fractions of a coin these values are interpreted in fixed point arithmetic with 8 digits precision. This means that 1 WART is internally represented as `uint64_t` number with value 100000000. The smallest representable step is 0.00000001 WART and represented as `uint64_t` number with value 1.
+The reference implementation uses the C++ data type `uint64_t` for storing amounts of WART. This is a 64 bit unsigned integer. To represent fractions of a coin these values are interpreted in fixed point arithmetic with 8 digits precision. This means that 1 WART is internally represented as `uint64_t` number with value 100000000. The smallest representable step is `0.00000001 WART` and represented as `uint64_t` number with value 1.
 
 For easier integration all API endpoints return both, the WART amount as a string (like `"amount": "12.0"`), and the internal integer representation indicated with label "E8" (like `"amountE8": 1200000000`).
 
@@ -93,135 +92,91 @@ The default SQLite database file name used for the chain is `chain.db3` and can 
 
 Warthog implements an account based architecture. This is similar to Ethereum and different from Bitcoin's UTXO model. Every account along with its balance is stored in the `State` table of the chain database. For efficiency reasons accounts are referred by their id: Every account is assigned a unique auto-incremented id value on first use. This makes blocks more space-efficient since a block id only requires 8 bytes of storage whereas an address would require 20 bytes.
 
-== Anatomy of a block
+
+== Fee specification
+
+For efficiency and compactness transaction fees are encoded as 2-byte floating-point numbers (16 bits), where the first 6 bits encode the exponent and the remaining 10 bits encode a 11 bit mantissa starting with an implicit 1. This means that fee values cannot be `0` and are of lower precision than regular amount values which use 4 bytes. A fee of value of `0` specified on transaction generation will automatically transform into the minimal fee value of `0.0000001` WART.
+
+#pagebreak()
+
+
+#show: appendix
+
+= Block Structure
+
 
 The binary content of a block is a concatenation of the following sections in their specified order:
 
-    1.Mining section
-    2.New address section
-    3.Reward section
-    4.Transfer section
++ Mining section
++ New address section
++ Reward section
++ Transfer section
 
 Below we describe the above sections. All numbers and id values are in network byte order.
 
-=== Mining section
+== Mining section
 
 This section allows miners to put 4 bytes of arbitrary data to affect the merkle hash.
 
-#figure(
-  caption: [Mining Section],
-  table(columns: 2, table.header([*byte range*], [*content*]), 
-    [1-4], [arbitrary data])
+#let bytetable(caption,..entries) = {
+figure(
+  caption: caption,
+  table(columns: 2, align: left, table.header([*byte range*], [*content*]), ..entries)
 )
-=== New address section
+}
+
+#bytetable([Mining Section],
+    [1-4], [arbitrary data])
+
+== New address section
 
 This section lists new addresses that receive payments in this block and therefore need to be added to the `state` table. This way they will be assigned a new id value which is referenced in the other sections to specify a particular account.
 
-#figure(
-  caption: [New Address Section],
-  table(columns: 2, table.header([*byte range*], [*content*]), 
+#bytetable([New Address Section],
     [1-4], [number  `n` of new addresses],
-    [5-(4+n*20)], [`n` addressess of 20 bytes each]
-  )
-)
+    [5-(4+n*20)], [`n` addressess of 20 bytes each])
+
 
 Miners are responsible to ensure that the addresses appearing in the new address section are not already present in the state table and are actually referenced in this block. Otherwise the block is considered invalid.
 
-=== Reward section
+== Reward section
 
 Mining reward is distributed to at least one reward address. (Need to be reworked as last commit change this)
 
-#figure(
-  caption: [Reward Section],
-  table(columns: 2, table.header([*byte range*], [*content*]), 
+#bytetable([Reward Section],
     [1-2], [number  `r` of reward entry],
     [3-(4+n*16)], [`r` reward entries]
-  )
 )
 
 Every reward entry consists of 16 bytes:
 
-#figure(
-  caption: [Reward entry],
-  table(columns: 2, table.header([*byte range*], [*content*]), 
+#bytetable([Reward entry],
     [1-8], [accountId],
     [9-16], [amount]
-  )
 )
 
 The sum of the amounts received by the addresses listed in the mining reward section must not exceed the total mining reward (block reward + transaction fees), otherwise the block is considered invalid.
 
-The total size of the mining section is 2+ ``r*16 bytes``.
+The total size of the mining section is `2 + r * 16` bytes.
 
-=== Transfer section
+== Transfer section
 
 The transfer section contains the transfers made in this block. Its binary outline is as follows:
 
-#figure(
-  caption: [Transfer Section],
-  table(columns: 2, table.header([*byte range*], [*content*]), 
-    [1-4], [number `t` of transfer entries],
-    [5-(4+t*99)], [`t` transfer entries]
-  )
+#bytetable([Transfer Section],
+[1-4], [number `t` of transfer entries],
+[5-(4+t*99)], [`t` transfer entries]
 )
 
 Every transfer entry has the following structure:
 
-#figure(
-  caption: [Transfer structure],
-  table(columns: 2, table.header([*byte range*], [*content*]), 
+#bytetable( [Transfer structure],
     [1-8], [fromAccountId],
     [9-16], [pinNonce], 
     [17-18], [fee], 
     [19-26], [toAccountId], 
     [27-34], [amount], 
     [35-99], [recoverable signature (65 bytes)]
-  )
 )
 
 Each payment entry has length 99 bytes. Compare this to the average transaction size of around 200 bytes per Bitcoin transfer.
-
-== Fee specification
-
-For efficiency and compactness transaction fees are encoded as 2-byte floating-point numbers (16 bits), where the first 6 bits encode the exponent and the remaining 10 bits encode a 11 bit mantissa starting with an implicit 1. This means that fee values cannot be 0 and are of lower precision than regular amount values which use 4 bytes. A fee of value of `0` specified on transaction generation will automatically transform into the minimal fee value of `0.0000001` WART.
-
-== Colorful items
-
-The main color can be set with the `main-color` property, which affects inline code, lists, links and important items. For example, the words highlight and important are highlighted !
-
-- These bullet
-- points
-- are colored
-
-+ It also
-+ works with
-+ numbered lists!
-
-== Customized items
-
-
-Figures are customized but this is settable in the template file. You can of course reference them @ref.
-
-#figure(caption: [Source tree], kind: image,
-box(width: 65%,sourcecode(numbering:none,
-```bash
-main
-├── README.md
-├── assets
-│   ├── images
-│   │   ├── used images
-│   └── backup 
-│       └── backup files
-├── makefile
-└── src
-    ├── headers
-    │   ├── files.h
-    └── files.c
-```))
-)<ref>
-
-#pagebreak()
-
-= Enjoy !
-
-#lorem(100)

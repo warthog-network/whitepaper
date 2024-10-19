@@ -1,3 +1,4 @@
+#import "@preview/numbly:0.1.0": numbly
 
 // main project
 #let bubble(
@@ -93,7 +94,7 @@ set heading(numbering: (..nums) => {
 
   v(2fr)
 
-  // Author information.
+  // alt information.
   align(center)[
       #text(alt, 14pt, weight: "bold") \
     ]
@@ -122,6 +123,12 @@ set heading(numbering: (..nums) => {
 //set block-quote
 #let blockquote = rect.with(stroke: (left: 2.5pt + luma(170)), inset: (left: 1em))
 
-// use primary-color and secondary-color in main
-#let primary-color = rgb("E94845")
-#let secondary-color = rgb(255, 80, 69, 60%)
+#let appendix(body) = {
+  set heading(numbering: numbly(
+    "Appendix {1:A}.",
+    "{1:A}.{2}.",
+    "{1:A}.{2}.{3}",
+  ))
+  counter(heading).update(0)
+  body
+}
