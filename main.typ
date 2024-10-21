@@ -11,7 +11,7 @@
   alt: "Whitepaper",
   affiliation: "University",
   date: datetime.today().display(),
-  logo: image("./assets/SVGs/Circle/Warthog_2024_Circle Yellow.svg"),
+  logo: image("./assets/logo/Circle/Warthog_2024_Circle Yellow.svg"),
   color-words: ("highlight", "important")
 ) 
 #outline()
@@ -19,24 +19,130 @@
 #pagebreak()
 
 
-= Introduction and Project goals
+= Introduction
 
-Warthog is a classical Proof-of-Work (PoW) based cryptocurrency which is meant to be a fun and experimental side project of its developers Pumbaa, Timon and Rafiki who work in blockchain industry.
+== History
+Originally, Warthog was written as a fun and experimental side project of its original developers Pumbaa, Timon and Rafiki has who work in blockchain industry. Initially there was no specific purpose or use case planned. Instead, the goal was firstly to revive the days when crypto was a fun and an interesting experiment, and secondly to try out new things and learn how blockchain technology works in detail.
 
-We are working on Warthog in our free time and there is always the risk that we leave due to time constraints or personal reasons. In fact our colleague Timon has already left the team. Therefore we are trying to build up a strong community backing the project.
+However soon after its inception a vibrant community started to form around the young project and with it new contributors joined the project bringing a fresh wind of development support and innovative ideas. The project started to grow up and is still growing today.
 
-Mainly one can describe this project as an experiment to try out new things and learn how blockchain technology works in detail. But at the same time we want to be as transparent and fair as possible and avoid as much as possible fishy and questionable practice currently seen in most other new projects.
+== What is Warthog Network?
 
-The code is freshly written in C++20 and is not a cheap fork of any other project. Therefore there is always the risk of serious or unfixable bugs. But at the same time there is real effort put into this project which sets it apart from most competitors.
+Warthog is the first *Proof-of-Balanced-Work* (PoBW) Layer 1 network trying to push the boundary of what is technically possible by implementing multiple *highly innovative* and unique features including
 
-The community is welcome to take actively part in the evolution of Warthog, the logo and the explorer are made by volunteers and also possible choices for a mining algorithm are proposed. The connection with the community shall be preserved and extended in the future. If you want to join, please do so!
 
-There is no specific purpose or use case of Warthog. However we want to revive the days when crypto was a fun and an interesting experimental thing. One of our experiments with this project is to use SQLite to store blocks and state. Another is the completely novel idea of syncing nodes via chain descriptors instead of asking other nodes for blocks by their hashes.
+- Janushash (first anti-farm balanced CPU/GPU combo PoBW algo)
+- Chain descriptor sync (new efficient and resource-friendly sync)
+- SQLite blockstore (easy cross-platform copy of chain file)
+- Full browser nodes (start a full node by opening a website)
+- WasmFS support (browser nodes can persist whole chain)
+- WebRTC support (browser nodes can communicate P2P)
 
-One design principle of Warthog is fast sync speed and a low impact on system resources which is achieved by the use of fast hashing algorithms, appropriate data structures and our custom-built sync algorithm.
+Unlike may other cryptocurrency projects we are *not a fork* of any other project. Instead, the *code is freshly written* in the #box[C++] programming language. New software always bears the risk of unforeseen bugs but at the same time the real effort put into this project sets it apart from most competitors.
 
-For now and in the near future the primary plan is to make the node implementation more robust and improve infrastructure like explorer and API for better interoperability.
+As a community project we are trying to be as transparent and fair as possible and avoid the fishy and questionable practice currently seen in most other new projects: we had a *fair launch* with *no team allocation or premine*, therefore donations for developments are always welcome!
 
+Warthog is neither a company nor an organization. It is rather a loose team of passionate crypto enthusiasts who are contributing to the project in their free time. Bear in mind that team members may decide to leave the project at any time, in fact Timon, one of the original developers has already left the team. 
+
+Therefore we are constantly trying to expand the stronger community behind Warthog.
+The community is welcome to take actively part in the evolution of Warthog. The logo, the explorer and other milestones were contributed by volunteers. If you think you can help, please let us know! 
+
+= Janushash
+
+
+== Proof of Balanced Work
+
+=== Introduction
+
+Proof of Balancd Work (PoBW) was first formulated in 2023 by Warthog community developer "CoinFuMasterShifu"  #cite(<pobw>) and was specifically implemented for Warthog for the first time. Compared to classical Proof of Work, the class of Proof of Balanced Work (PoBW) algorithms is very different. Instead of only employing one hash function they combine multiple hash functions in a multiplicative way. The mathematical theory of considering a multiplicative combination of hashes, i.e. hash products, was established in this paper for Warthog and currently there is no other crypto project using Proof of Balanced Work for consensus.
+
+Combining different hash functions multiplicatively has the advantage that
+
++ different hash functions can be mined in parallel devices at different hashrates using a multi-stage filtering approach and
++ efficient mining requires mining of all involved algorithms for each block in contrast to previous failed attempts to construct multi-algorithm block chains by using individual difficulties for each algorithm (Myriad Coin, DigiByte, Verge). For example Verge was hacked by focusing only on one algorithm.
+
+
+== Janushash
+
+Essentially, Proof of Balanced Work algorithms are simply the multiplicative combinations of existing hash functions. Warthog's Janushash algorithm combines two hash functions:
+
++ triple Sha256 (Sha256t) and
++ Verushash v2.2
+
+
+=== Balancing
+
+Energy-efficient mining of Proof of Balanced Work algorithms requires finding a good balance between Sha256t and Verushash hashrates. The best combination depends on hardware and energy cost but it is clear that mining without a GPU or with a weak CPU won't be competitive. The balancing requirement coined the name "Proof of Balanced Work".
+
+== Hashrate Decentralization
+
+=== Fighting Farms
+
+Interestingly, the Janushash algorithm keeps away both, GPU farms and CPU farms:
+
+GPU farms usually save on the CPU side, because CPU performance is not relevant for mining GPU algorithms. Therefore such farms perform poorly on Janushash. GPU farm owners would need to make significant investments in efficient and performant motherboards and CPUs to improve their GPU/CPU balance for efficiently mining Janushash.
+
+CPU farms perform very poorly on Janushash because of the lack of accelerated triple Sha256 hash evaluation. The same applies to most botnets.
+
+This means large mining farms and botnets play a much smaller role in Warthog than they do in other proof of work cryptocurrencies, which increases decentralization of hashrate.
+
+=== Satoshi's vision
+
+Originally, Satoshi Nakamoto had an idealized hope for mining being a democratized way of establishing consensus. This can be seen for example in his famous whitepaper #cite(<nakamoto2009bitcoin>) where it says:
+#blockquote[Proof-of-work is essentially one-CPU-one-vote.]
+
+From this article #cite(<lazlogpu>) about Laszlo Hanyecz's correspondence with Satoshi we can observe that Satoshi was not amazed about the fact that GPU mining would disrupt this idealized hope:
+
+#blockquote[One of the first emails Satoshi had sent the man was in response to him describing his proposed GPU miner. Mainly, Satoshi was none-too-pleased, asking Hanyecz to slow down with this.]
+#blockquote[Satoshi explained that, at the time, one of the biggest attractions possible is the fact that anyone can download Bitcoin and start mining with their laptops. Without that, it wouldn't have gained as much traction.]
+
+
+He knew that with the advent of GPU mining, many CPU miners would be kicked out of the network, which would be against his vision of fair, equal and decentralized mining. Therefore he hoped to delay this as long as possible. @bitcointalk shows one of his posts on Bitcointalk.
+#figure(
+  image("./assets/satoshi_bitcointalk.png", width: 80%),
+  caption: [Satishi's hope to postpone GPU arms race.],
+)<bitcointalk>
+
+
+We all know that his hopes have not been fulfilled, today Bitcoin is mined on specialized expensive hardware and only those with access to this hardware can participate in mining. After all, Satoshi was not able to solve the issue of centralized mining.
+
+We are confident that the use of Proof of Balanced Work solves this issue to a large extent when the combined hash functions are carefully selected. In Janushash, the two hash functions Sha256t and Verushash where chosen to require a GPU and a CPU connected with sufficiently large bandwidth. This was done to target typical gaming PCs. As described above, with this choice farms cannot easily join the network without being forced to make additional investments just for mining Warthog. This democratizes mining and brings Warthog closer to Satoshi's vision.
+
+== ASIC Resistance
+
+As technology advances, so does specialized mining hardware, especially when potential profits are high. There is nothing that can be done against this fact. However there are three reasons why Warthog is more robust against ASIC threats than other PoW cryptocurrencies:
+
+=== Inherited ASIC Resistance
+
+When it comes to ASIC resistance, Proof of Balanced Work is stronger than its strongest ingredient. To accelerate mining, an ASIC would need to be able accelerate computation of all combined hash functions to avoid a bottleneck effect. In addition an ASIC would need enough bandwidth between the hardware sections computing different hash functions as well as calibration and tuning to optimize their intercommunication and coordination.
+
+In particular, Janushash inherits ASIC-resistance from Verushash v2.2 which is currently mined on CPUs and GPUs, but not on FPGAs/ASICs, and the need to also require SHA256t hashrate makes Janushash even more ASIC-resistant.
+
+=== Detection of suspicious hashrate
+
+In traditional Proof of Work networks we only have one marker to analyze network hashrate, namely the network difficulty. It can be used to estimate the total hashrate of all miners in the network. However we cannot tell whether some actors use specialized hardware to gain an unfair advantage over normal miners.
+
+Janushash however combines two hash functions and harnessing the probability theory and statistics, we can extract information about the Sha256t/Verushash hashrate ratio used to mine a block. This information is shown publicly in the blockchain explorer.
+
+In addition to the network difficulty, this second marker provides useful information on the network hashrate: It allows to spot suspicious hashrate immediately. In Warthog it is much more difficult for ASICs to stay undetected because they must not only successfully mine blocks, but also mimic the hashrate ratio used by honest miners. This is another unique property of Proof of Balanced Work.
+
+=== Simple Algorithm Adaption
+
+The fundamental reason for the favorable properties of the Janushash algorithm is not the particular choice of the combined hash functions itself, but the choice to rely on Proof of Balanced Work to combine different hash functions multiplicatively. This means that if ASICs really join the network one day, we can simply exchange the combined hash functions, for example for Blake3 on GPU and RandomX on CPU, while preserving all the advantages listed here. Combining established hash functions allows the creation new algorithms fast while benefiting from their maturity and proven properties at the same time. This allows Warthog to adapt quickly when needed.
+
+== Other Benefits
+
+Warthog tries to revive the good old days when mining was fun. The unique properties of the Janushash algorithm help to achieve this goal:
+
+=== Escaping one-dimensional mining boredom
+
+In a way, traditional mining in cryptocurrency is one-dimensional, the goal is simply to find the best hardware for evaluating some hash function. In contrast, mining Warthog is two-dimensional: there are two hash functions Sha256t and Verushash v2.2, and both hashrates are relevant for the mining efficiency. This leads to much more versatile options and motivates miners to experiment with endless hardware setups. Vivid discussions about the best combinations bring Warthog mining to life.
+
+=== Favoring the little guy
+
+As explained above, established farms require substantial investments in order to mine Warthog efficiently and making such investment only for mining Warthog might not be reasonable for most farms.
+
+On the other hand gamers usually have systems with modern platforms and CPUs paired with sufficiently good GPUs to mine Warthog efficiently. Since farms and botnets are less of a direct competitor in Warthog than they are in other Proof of Work cryptocurrencies, this will reflect in increased mining returns for the average gamer or miner, which will in turn contribute to Warthog's popularity.
 
 = Technical Details
 == Retarget Logic
@@ -54,7 +160,7 @@ While in Bitcoin the difficulty change is capped by factor 4, we have implemente
 Warthog was started without any premined or reserved amount of coins on June 29, 2023. The project implements a classical halving-based emission scheme with halvings occurring every 3153600 blocks (every 2 years). The emission for the next 4 years is summarized in the following table:
 #figure(
   caption: [Emission scheme],
-  table(columns: 3, table.header([Date], [Lifetime], [% of total supply in circulation]), 
+  table(columns: 3, table.header([*Date*], [*Lifetime*], [*% of total supply in circulation*]), 
     ..for (.., Date,Lifetime, percent_emission) in emission {
         (Date,Lifetime, percent_emission)
     })
@@ -62,13 +168,13 @@ Warthog was started without any premined or reserved amount of coins on June 29,
 
 There is no tail emission which means there is a hard cap of the amount in circulation. The hard cap is `18921599.68464 WART` (around 19 million coins).
 
-Before halving occurs every block yields 3 WART as miner reward. Since the block time is 20 seconds, every day approximately $60/20 × 60 × 24 = 4320$ blocks and `12960 WART` are mined daily before halving.
+Before halving occurs every block yields `3 WART` as miner reward. Since the block time is 20 seconds, every day approximately $60/20 × 60 × 24 = 4320$ blocks and `12960 WART` are mined daily before halving.
 
 == Coin Precision
 
-The reference implementation uses the C++ data type `uint64_t` for storing amounts of WART. This is a 64 bit unsigned integer. To represent fractions of a coin these values are interpreted in fixed point arithmetic with 8 digits precision. This means that 1 WART is internally represented as `uint64_t` number with value 100000000. The smallest representable step is `0.00000001 WART` and represented as `uint64_t` number with value 1.
+The reference implementation uses the C++ data type `uint64_t` for storing amounts of `WART`. This is a 64 bit unsigned integer. To represent fractions of a coin these values are interpreted in fixed point arithmetic with 8 digits precision. This means that `1 WART` is internally represented as `uint64_t` number with value 100000000. The smallest representable step is `0.00000001 WART` and represented as `uint64_t` number with value 1.
 
-For easier integration all API endpoints return both, the WART amount as a string (like `"amount": "12.0"`), and the internal integer representation indicated with label "E8" (like `"amountE8": 1200000000`).
+For easier integration all API endpoints return both, the `WART` amount as a string (like `"amount": "12.0"`), and the internal integer representation indicated with label "E8" (like `"amountE8": 1200000000`).
 
 == One-of-a-kind chain descriptor based sync
 
@@ -95,7 +201,7 @@ Warthog implements an account based architecture. This is similar to Ethereum an
 
 == Fee specification
 
-For efficiency and compactness transaction fees are encoded as 2-byte floating-point numbers (16 bits), where the first 6 bits encode the exponent and the remaining 10 bits encode a 11 bit mantissa starting with an implicit 1. This means that fee values cannot be `0` and are of lower precision than regular amount values which use 4 bytes. A fee of value of `0` specified on transaction generation will automatically transform into the minimal fee value of `0.0000001` WART.
+For efficiency and compactness transaction fees are encoded as 2-byte floating-point numbers (16 bits), where the first 6 bits encode the exponent and the remaining 10 bits encode a 11 bit mantissa starting with an implicit 1. This means that fee values cannot be `0` and are of lower precision than regular amount values which use 4 bytes. A fee of value of `0` specified on transaction generation will automatically transform into the minimal fee value of `0.0000001 WART`.
 
 #pagebreak()
 
@@ -180,3 +286,32 @@ Every transfer entry has the following structure:
 )
 
 Each payment entry has length 99 bytes. Compare this to the average transaction size of around 200 bytes per Bitcoin transfer.
+#pagebreak()
+#par(justify:false, [
+= Link Collection
+- Website: https://www.warthog.network/
+- Github: https://github.com/warthog-network
+- Gui Wallet: https://github.com/andrewcrypto777/wart-wallet
+- PoBW whitepaper: https://github.com/CoinFuMasterShifu/ProofOfBalancedWork/blob/main/PoBW.pdf
+- Janushash: https://warthog.network/docs/janushash 
+- Guide for pool devs: https://warthog.network/docs/developers/integrations/pools/
+- Guide for miner devs: https://warthog.network/docs/developers/integrations/miners/
+- Guide: https://github.com/warthog-network/warthog-guide
+- Explorer: https://wartscan.io/
+- Discord: https://discord.com/invite/QMDV8bGTdQ
+- Telegram: https://t.me/warthognetwork
+- Bitcointalk: https://bitcointalk.org/index.php?topic=5458046.0
+- API documentation: https://github.com/warthog-network/Warthog/blob/master/doc/API.md
+- Reddit: https://www.reddit.com/r/warthognetwork/
+- Pool: https://warthog.acc-pool.pw/
+- Wart-Dapp: https://github.com/warthog-network/wart-dapp/releases
+- Coingecko: https://www.coingecko.com/en/coins/warthog
+- Exbitron: https://exbitron.com/trade?market=wart-usdt
+- Tradeogre: https://tradeogre.com/exchange/WART-USDT
+- Xeggex: https://xeggex.com/market/WART_USDT
+- Miningpoolstats: https://miningpoolstats.stream/warthog
+- Coinpaprika: https://coinpaprika.com/coin/wart-warthog/
+- Livecoinwatch: https://www.livecoinwatch.com/price/WarthogNetwork-WART
+])
+
+#bibliography("cite.bib")
