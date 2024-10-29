@@ -246,7 +246,7 @@ For efficiency and compactness transaction fees are encoded as 2-byte floating-p
 
 
 = Roadmap 2024 - 2025
-- [x] New "herominers" pool support (please aim for pool decentralization
+- [x] New "herominers" pool support (please aim for pool decentralization)
 - [/] Collect sufficient donation funds
 - [/] New website with design by BalkyBot (logo designer)
 - [/] Browser nodes 
