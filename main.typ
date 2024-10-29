@@ -1,5 +1,6 @@
 #import "template.typ": *
 #import "@preview/codelst:2.0.1": sourcecode
+#import "@preview/cheq:0.2.2": checklist
 
 #set outline(title: "Table of contents", indent: 1em)
 
@@ -12,12 +13,13 @@
   affiliation: "University",
   date: datetime.today().display(),
   logo: image("./assets/logo/Circle/Warthog_2024_Circle Yellow.svg"),
-  color-words: ("highlight", "important")
+  color-words: ()
 ) 
 #outline()
 
 #pagebreak()
 
+#show: checklist
 
 = Introduction
 
@@ -47,14 +49,51 @@ Warthog is neither a company nor an organization. It is rather a loose team of p
 Therefore we are constantly trying to expand the stronger community behind Warthog.
 The community is welcome to take actively part in the evolution of Warthog. The logo, the explorer and other milestones were contributed by volunteers. If you think you can help, please let us know! 
 
+= Revolutionary features
+
+There are several noatable features that are exclusive to Warthog across the industry. 
+@janushash
+
+= Browser nodes
+TODO
+== WasmFS
+TODO
+== P2P communication over WebRTC
+P2P communication between Browsers is possible via the WebRTC protocol. This protocol has to be signaled on connection establishment, i.e. a service needs to perform negotiation work before both ends are connectd directly. Nodes themselves will be configured to do this such that no external services will be necessary apart from being connected to the Warthog network.
+= DeFi2 
+We will hard-code DeFi within Warthog nodes. On the one hand this puts additional burden on core developers because DeFi code must be written instead of leaving this task for smart contract developers. But on the other hand it yields several advantages and extends DeFi possibilities:
+- Unified and systematic treatment of DeFi and assets 
+- No Service fragmentation like countless swap service clones 
+- No unfair practices for scammers like additional fees or supply inflation hidden behind smart contract logic.
+- Clear foundation to check how each token was initially distributed (Fair auction or just minted out of thin air)
+- Custom matching engine to *solve MEV extraction issue* that plagues DeFi, see @matching_engine.
+- Additional features such as *clone balance distribution*, *dividends*, *scriptless airdrops*.
+We call this concept and its extended capabilities _DeFi2.0_.
+== Custom Matching engine
+<matching_engine>
+A matching engine that determines a single price for all buy and sell orders within a block will invalidate front and back running and save Warthog from MEV bots without the need to hide the order book. Such a matching engine cannot inspect DeFi orders separately as is done in today's DeFi implementations, but has to be aware of the collection of all buy and sell orders and pool liquidity to find a fair price. This means that *nodes need to be DeFi aware* and this is the most important difference to DeFi based on smart contracts. To solve the MEV problem, nodes need to talk DeFi and have appropriate code at block processing level, or even at mempool and networking level, see @SurfacePropagation for details.
+
+== New DeFi features
+
+TODO
+=== Balance cloning
+=== Paying dividends to holders
+=== Scriptless airdrops
+
+
+== Orderbook Surface Propagation (Later)
+<SurfacePropagation>
+At a later stage we will focus on implementing a new method to lower order fees. Nodes can inspect order prices and only share orders from their mempools which have better buy/sell price than what peers know. This way only the surface of the order book is transmitted between nodes up to the point where buy and sell overlap, i.e. where order matching is possible. This idea shall be more elaborated at a later stage.
+
 = Janushash
+<janushash>
 
 
 == Proof of Balanced Work
 
 === Introduction
 
-Proof of Balancd Work (PoBW) was first formulated in 2023 by Warthog community developer "CoinFuMasterShifu"  #cite(<pobw>) and was specifically implemented for Warthog for the first time. Compared to classical Proof of Work, the class of Proof of Balanced Work (PoBW) algorithms is very different. Instead of only employing one hash function they combine multiple hash functions in a multiplicative way. The mathematical theory of considering a multiplicative combination of hashes, i.e. hash products, was established in this paper for Warthog and currently there is no other crypto project using Proof of Balanced Work for consensus.
+Proof of Balanced Work (PoBW) was first formulated in 2023 by Warthog community developer "CoinFuMasterShifu"  #cite(<pobw>) and was specifically implemented for Warthog for the first time. Compared to classical Proof of Work, the class of Proof of Balanced Work (PoBW) algorithms is very different. Instead of only employing one hash function they combine multiple hash functions in a multiplicative way. The mathematical theory of considering a multiplicative combination of hashes, i.e. hash products, was established in this paper for Warthog and currently there is no other crypto project using Proof of Balanced Work for consensus.
 
 Combining different hash functions multiplicatively has the advantage that
 
@@ -205,6 +244,30 @@ For efficiency and compactness transaction fees are encoded as 2-byte floating-p
 
 #pagebreak()
 
+
+= Roadmap 2024 - 2025
+- [x] New "herominers" pool support (please aim for pool decentralization
+- [/] Collect sufficient donation funds
+- [/] New website with design by BalkyBot (logo designer)
+- [/] Browser nodes 
+  - [x] Allow chain to be saved within browsers persistently in WASMFS.
+  - [x] Port node code to Webassembly
+  - [/] Browser Node GUI (started)
+  - [/] Add new realtime API methods for browser nodes (started)
+  - [x] Refactor network code to abstract away the communication layer (raw TCP, Websocket, WebRTC)
+  - [x] Invent a robust protocol for exchangeing peers and negotiating (signaling) P2P WebRTC connections between nodes.
+  - [/] Protocol implementation
+  - [ ] Testing
+- [/] DeFi2.0
+  - [/] Implement custom matching engine (early demo available)
+  - [ ] Design database tables for modeling pools and cloning token balance with copy-on-write 
+  - [ ] Implement new token generation
+  - [ ] Implement hard-coded pools with merged (liquity + limit orders) matching 
+  - [ ] Implement protocol for exchanging orders between nodes 
+  - [ ] Change block structure to support order matching
+
+= Summary
+In this whitepaper we have presented the Warthog Network crypto project which stands out of the masses in terms of decentralization, technology and innovation. Unique flagship features include the specifically designed Janushash algorithm based on newly invented Proof of Balanced Work technology, which honors Satoshi's ideals of mining democratization, the almost finished browser full nodes with planned P2P WebRTC communication and notably the planned DeFi2 implementation which will solve current DeFi's biggest problem #box[_MEV extraction_] and add new features such as dividends, scriptless proportional airdrops to token holders, ICOs and more in a clean and user-friendly way. With the fair initial coin distribution based purely on mining and its thriving community Warthog's future shines bright.
 
 #show: appendix
 
