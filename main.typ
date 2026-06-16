@@ -55,9 +55,18 @@ There are several noatable features that are exclusive to Warthog across the ind
 @janushash
 
 = Browser nodes
-TODO
+
+#block[
+#set text(size: 0.9em)
+#emph[Note:] Browser nodes are technically advanced but currently on hold. DeFi features have top priority and implementation will resume after DeFi is fully shipped.
+]
+
+Warthog introduces the ability to run a full blockchain node directly within a web browser, a feat accomplished through WebAssembly compilation of the native C++ node code. This breakthrough enables anyone to participate in the network by simply opening a web page, without requiring software installation or manual configuration. The browser node implementation represents a fundamental shift in accessibility for blockchain participation.
+
 == WasmFS
-TODO
+
+The WebAssembly File System (WasmFS) enables browser-based nodes to persist the entire blockchain state locally within the browser's storage. Unlike traditional web applications which are stateless by design, WasmFS provides a virtual filesystem that survives page reloads and browser restarts. This persistence is crucial for a blockchain node, as synchronization must be maintained across sessions. Through WasmFS, browser nodes can store the complete chain database, enabling true full-node functionality without server-side components. The implementation leverages OPFS (Origin Private File System) to achieve reliable writes and reads of binary blockchain data.
+
 == P2P communication over WebRTC
 P2P communication between Browsers is possible via the WebRTC protocol. This protocol has to be signaled on connection establishment, i.e. a service needs to perform negotiation work before both ends are connectd directly. Nodes themselves will be configured to do this such that no external services will be necessary apart from being connected to the Warthog network.
 = DeFi2 
@@ -71,14 +80,44 @@ We will hard-code DeFi within Warthog nodes. On the one hand this puts additiona
 We call this concept and its extended capabilities _DeFi2.0_.
 == Custom Matching engine
 <matching_engine>
-A matching engine that determines a single price for all buy and sell orders within a block will invalidate front and back running and save Warthog from MEV bots without the need to hide the order book. Such a matching engine cannot inspect DeFi orders separately as is done in today's DeFi implementations, but has to be aware of the collection of all buy and sell orders and pool liquidity to find a fair price. This means that *nodes need to be DeFi aware* and this is the most important difference to DeFi based on smart contracts. To solve the MEV problem, nodes need to talk DeFi and have appropriate code at block processing level, or even at mempool and networking level, see @SurfacePropagation for details.
+
+=== The Problem with Sequential Matching
+
+In traditional DeFi protocols, swap orders are matched against liquidity pools one at a time. Each transaction interacts with the pool sequentially, which means the pool state changes after every individual swap. This creates an ordering dependency that block builders can exploit: by observing pending transactions in the mempool, they can position their own orders before or after a victim's order to extract value. This practice, known as MEV extraction, manifests most commonly as sandwich attacks where a victim's trade is surrounded by attacker transactions that buy low and sell high at the victim's expense.
+
+=== Fair Batch Matching: The Solution
+
+Warthog's custom matching engine implements *Fair Batch Matching* (FBM), a mathematical framework that processes all swap orders within a block jointly rather than sequentially #cite(<fairbatchmatching>). This approach completely eliminates the possibility of ordering-based MEV extraction.
+
+A swap order is represented as a pair $(l, q)$ where $l$ is the limit price and $q$ is the swap quantity. The order book consists of base swap orders (sell orders) and quote swap orders (buy orders). The liquidity pool maintains reserves of the base asset and the quote asset.
+
+For a given price $p > 0$, a valid *fill configuration* assigns fill quantities to each order such that sell orders with limit price below $p$ are filled, buy orders with limit price above $p$ are filled, and at most one order can be partially filled. The fill sums $F^B$ and $F^Q$ represent the total base and quote asset quantities to be exchanged.
+
+A *pool interaction* is a pair satisfying the constant product equation $(q^B + Delta^B)(q^Q + Delta^Q) = q^B q^Q$, where $q^B$ and $q^Q$ are the pool's base and quote reserves, and $Delta^B$ and $Delta^Q$ represent the changes in these reserves due to the interaction.
+
+A pool interaction is deemed *fair* when neither buyers nor sellers can improve their average conversion price by interacting differently with the pool. This occurs when the pool price equals the ratio of fill sums, or when one side fully utilizes the pool while the other does not.
+
+A *Fair Batch Matching (FBM)* consists of a price $p$, a corresponding valid fill configuration, and a fair pool interaction with final pool price $p = (q^Q + Delta^Q) / (q^B + Delta^B)$.
+
+*Theorem (Fair Batch Matching).* There always exists a unique Fair Batch Matching for any order book and liquidity pool configuration. This guarantees that all participants receive the same fair price for their trades.
+
+This theorem, proven in #cite(<fairbatchmatching>), establishes that FBM is the canonical and only fair method for matching discrete liquidity (order books) with continuous liquidity (liquidity pools). The uniqueness property means that no participant can obtain a better price by manipulating transaction ordering, effectively rendering sandwich attacks impossible at the consensus level.
 
 == New DeFi features
 
-TODO
-=== Balance cloning
-=== Paying dividends to holders
-=== Scriptless airdrops
+Warthog's hard-coded DeFi implementation enables novel features that are difficult or impossible to realize in smart contract-based systems. These features leverage the node's native understanding of token balances and transaction flow.
+
+=== Balance Cloning
+
+Balance cloning enables the creation of new tokens whose initial distribution mirrors an existing token's balance. This is achieved through a lazy copy-on-write database mechanism that references the original token's UTXO set without immediately duplicating data. When a cloned token is created, all holders of the original token receive an identical balance of the new token. This feature enables use cases such as testnet token distribution (distributing a snapshot of mainnet balances on a test environment) and community-driven token forks where the entire holder distribution is preserved. The copy-on-write approach ensures efficiency: storage is only consumed when a cloned token holder makes their first transaction, diverging from the original distribution.
+
+=== Paying Dividends to Holders
+
+Warthog's architecture natively supports dividend distribution, allowing token issuers to distribute rewards proportionally to all token holders without requiring manual claims. When a dividend distribution transaction is processed, the node automatically computes each holder's proportion of the total supply and transfers the appropriate reward amount. This mechanism operates entirely at the consensus level, eliminating the need for smart contract registries or merkle tree-based claim systems. Dividend distributions are transparent and verifiable: every account balance update is recorded on-chain, and the distribution math is enforced by the matching engine rather than trusted off-chain computation.
+
+=== Scriptless Airdrops
+
+Traditional airdrops require either large merkle trees for distribution proofs or expensive individual transactions for each recipient. Warthog's scriptless airdrop mechanism instead creates new tokens and simultaneously distributes them to all holders of an existing token through a single transaction. The creator specifies a source token and a ratio determining how many new tokens each holder of the source token receives. The node's copy-on-write system efficiently creates the new token balances while the transaction fee is paid only once by the airdrop creator. This approach makes bulk token distribution economically viable even for large holder sets, as the cost scales with the number of distinct balance changes rather than the total number of holders.
 
 
 == Orderbook Surface Propagation (Later)
@@ -249,7 +288,7 @@ For efficiency and compactness transaction fees are encoded as 2-byte floating-p
 - [x] New "herominers" pool support (please aim for pool decentralization)
 - [/] Collect sufficient donation funds
 - [/] New website with design by BalkyBot (logo designer)
-- [/] Browser nodes 
+- [/] Browser nodes
   - [x] Allow chain to be saved within browsers persistently in WASMFS.
   - [x] Port node code to Webassembly
   - [/] Browser Node GUI (started)
@@ -258,16 +297,17 @@ For efficiency and compactness transaction fees are encoded as 2-byte floating-p
   - [x] Invent a robust protocol for exchangeing peers and negotiating (signaling) P2P WebRTC connections between nodes.
   - [/] Protocol implementation
   - [ ] Testing
-- [/] DeFi2.0
-  - [/] Implement custom matching engine (early demo available)
-  - [ ] Design database tables for modeling pools and cloning token balance with copy-on-write 
-  - [ ] Implement new token generation
-  - [ ] Implement hard-coded pools with merged (liquity + limit orders) matching 
-  - [ ] Implement protocol for exchanging orders between nodes 
-  - [ ] Change block structure to support order matching
+- [x] DeFi2.0
+  - [x] Implement custom matching engine with Fair Batch Matching
+  - [x] Design database tables for modeling pools and cloning token balance with copy-on-write
+  - [x] Implement new token generation with three token types (WART, Assets, Liquidity Tokens)
+  - [x] Implement hard-coded pools with merged (liquidity + limit orders) matching
+  - [x] Implement protocol for exchanging orders between nodes
+  - [x] Change block structure to support order matching
+  - [x] Implement client-side blockchain explorer
 
 = Summary
-In this whitepaper we have presented the Warthog Network crypto project which stands out of the masses in terms of decentralization, technology and innovation. Unique flagship features include the specifically designed Janushash algorithm based on newly invented Proof of Balanced Work technology, which honors Satoshi's ideals of mining democratization, the almost finished browser full nodes with planned P2P WebRTC communication and notably the planned DeFi2 implementation which will solve current DeFi's biggest problem #box[_MEV extraction_] and add new features such as dividends, scriptless proportional airdrops to token holders, ICOs and more in a clean and user-friendly way. With the fair initial coin distribution based purely on mining and its thriving community Warthog's future shines bright.
+In this whitepaper we have presented the Warthog Network crypto project which stands out of the masses in terms of decentralization, technology and innovation. Unique flagship features include the specifically designed Janushash algorithm based on newly invented Proof of Balanced Work technology, which honors Satoshi's ideals of mining democratization, the browser full nodes with WasmFS persistence and P2P WebRTC communication, and the DeFi2 implementation which solves current DeFi's biggest problem #box[_MEV extraction_] through Fair Batch Matching and adds new features such as dividends, scriptless proportional airdrops to token holders, and balance cloning in a clean and user-friendly way. With the fair initial coin distribution based purely on mining and its thriving community Warthog's future shines bright.
 
 #show: appendix
 
@@ -280,6 +320,13 @@ The binary content of a block is a concatenation of the following sections in th
 + New address section
 + Reward section
 + Transfer section
++ Token transfer section
++ Asset creation section
++ Limit swap section
++ Liquidity deposit section
++ Liquidity withdrawal section
++ Cancelation section
++ Match section
 
 Below we describe the above sections. All numbers and id values are in network byte order.
 
@@ -349,6 +396,161 @@ Every transfer entry has the following structure:
 )
 
 Each payment entry has length 99 bytes. Compare this to the average transaction size of around 200 bytes per Bitcoin transfer.
+== Asset Creation Section
+
+The asset creation section contains transactions that create new tokens on the Warthog network. Asset names can have at most 5 alphanumeric (`[a-zA-Z0-9]`) characters and must be unique across the network. When an asset is created, the entire initial supply is credited to the creator's account.
+
+#bytetable([Asset Creation Section],
+    [1-4], [number `a` of asset creation entries],
+    [5-(4+a*73)], [`a` asset creation entries]
+)
+
+Every asset creation entry has the following structure:
+
+#bytetable([Asset creation entry],
+    [1-8], [creatorAccountId],
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-23], [asset name (5 bytes, null-padded)],
+    [24-31], [total supply (uint64)],
+    [32-32], [decimals (1 byte)],
+    [33-97], [recoverable signature (65 bytes)]
+)
+
+The decimals field specifies how many decimal places the asset supports, affecting how token amounts are interpreted in fixed-point arithmetic.
+
+== Token Transfer Section
+
+The token transfer section handles transfers of non-WART tokens, including both regular assets and liquidity tokens. This distinguishes between regular asset transfers and pool liquidity token transfers.
+
+#bytetable([Token Transfer Section],
+    [1-4], [number `t` of token transfer entries],
+    [5-(4+t*106)], [`t` token transfer entries]
+)
+
+Every token transfer entry has the following structure:
+
+#bytetable([Token transfer entry],
+    [1-8], [fromAccountId],
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-26], [toAccountId],
+    [27-30], [assetId],
+    [31-46], [amount (16 bytes, asset-specific precision)],
+    [47-111], [recoverable signature (65 bytes)]
+)
+
+The `isLiquidity` flag, which indicates whether the transferred token is an asset or a liquidity token, is determined by the asset ID referencing either a standard asset or a liquidity pool's share token.
+
+== Limit Swap Section
+
+The limit swap section contains buy and sell orders for the decentralized exchange. Each order specifies a base asset, a limit price expressed in WART, and a quantity.
+
+#bytetable([Limit Swap Section],
+    [1-4], [number `l` of limit swap entries],
+    [5-(4+l*90)], [`l` limit swap entries]
+)
+
+Every limit swap entry has the following structure:
+
+#bytetable([Limit swap entry],
+    [1-8], [accountId],
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-22], [assetId],
+    [23-30], [amount],
+    [31-46], [limit price (16 bytes, encoded price)],
+    [47-47], [buy/sell flag (1 byte)],
+    [48-112], [recoverable signature (65 bytes)]
+)
+
+The buy/sell flag determines the direction of the order: a value of `1` indicates a buy order (trader wants to purchase the asset with WART), while `0` indicates a sell order (trader wants to sell the asset for WART).
+
+== Liquidity Deposit Section
+
+The liquidity deposit section records deposits of base asset and WART into liquidity pools, which mint liquidity tokens in return.
+
+#bytetable([Liquidity Deposit Section],
+    [1-4], [number `d` of liquidity deposit entries],
+    [5-(4+d*97)], [`d` liquidity deposit entries]
+)
+
+Every liquidity deposit entry has the following structure:
+
+#bytetable([Liquidity deposit entry],
+    [1-8], [accountId],
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-22], [assetId],
+    [23-38], [base amount],
+    [39-54], [quote amount (WART)],
+    [55-119], [recoverable signature (65 bytes)]
+)
+
+The liquidity pool automatically calculates the number of liquidity tokens to mint based on the deposited amounts and current pool reserves.
+
+== Liquidity Withdrawal Section
+
+The liquidity withdrawal section records redemptions of liquidity pool shares for underlying base asset and WART.
+
+#bytetable([Liquidity Withdrawal Section],
+    [1-4], [number `w` of liquidity withdrawal entries],
+    [5-(4+w*89)], [`w` liquidity withdrawal entries]
+)
+
+Every liquidity withdrawal entry has the following structure:
+
+#bytetable([Liquidity withdrawal entry],
+    [1-8], [accountId],
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-22], [assetId],
+    [23-38], [shares redeemed],
+    [39-103], [recoverable signature (65 bytes)]
+)
+
+== Cancelation Section
+
+The cancelation section contains references to transactions that should be invalidated. This includes pending transactions in the mempool and open orders in the order book.
+
+#bytetable([Cancelation Section],
+    [1-4], [number `c` of cancelation entries],
+    [5-(4+c*49)], [`c` cancelation entries]
+)
+
+Every cancelation entry has the following structure:
+
+#bytetable([Cancelation entry],
+    [1-8], [accountId],
+    [9-16], [pinNonce],
+    [17-20], [pinHeight],
+    [21-38], [recoverable signature (18 bytes)]
+)
+
+Once a transaction is canceled, it cannot be included in any future block, effectively blocking it from execution.
+
+== Match Section
+
+The match section is an implicit transaction generated by the node during block processing. It records the result of the Fair Batch Matching algorithm applied to all swap orders and liquidity pool interactions within the block.
+
+#bytetable([Match Section],
+    [1-4], [number `m` of match entries],
+    [5-(4+m*81)], [`m` match entries]
+)
+
+Every match entry has the following structure:
+
+#bytetable([Match entry],
+    [1-4], [assetId],
+    [5-20], [pool base before (16 bytes)],
+    [21-36], [pool quote before (16 bytes)],
+    [37-52], [pool base after (16 bytes)],
+    [53-68], [pool quote after (16 bytes)],
+    [69-76], [buy swaps count + offset],
+    [77-81], [sell swaps count + offset]
+)
+
+The match entry records the state of the liquidity pool before and after the FBM matching, along with references to the individual swaps. The buySwaps and sellSwaps arrays, which can be empty for blocks with no matching activity, contain the history IDs of the matched orders and the amounts swapped in each direction.
 #pagebreak()
 #par(justify:false, [
 = Link Collection
@@ -356,11 +558,13 @@ Each payment entry has length 99 bytes. Compare this to the average transaction 
 - Github: https://github.com/warthog-network
 - Gui Wallet: https://github.com/andrewcrypto777/wart-wallet
 - PoBW whitepaper: https://github.com/CoinFuMasterShifu/ProofOfBalancedWork/blob/main/PoBW.pdf
-- Janushash: https://warthog.network/docs/janushash 
+- Fair Batch Matching paper: https://github.com/CoinFuMasterShifu/FairBatchMatching/blob/main/FairBatchMatching.pdf
+- Janushash: https://warthog.network/docs/janushash
 - Guide for pool devs: https://warthog.network/docs/developers/integrations/pools/
 - Guide for miner devs: https://warthog.network/docs/developers/integrations/miners/
 - Guide: https://github.com/warthog-network/warthog-guide
 - Explorer: https://wartscan.io/
+- Client Explorer: https://github.com/warthog-network/client-explorer
 - Discord: https://discord.com/invite/QMDV8bGTdQ
 - Telegram: https://t.me/warthognetwork
 - Bitcointalk: https://bitcointalk.org/index.php?topic=5458046.0
@@ -375,6 +579,8 @@ Each payment entry has length 99 bytes. Compare this to the average transaction 
 - Miningpoolstats: https://miningpoolstats.stream/warthog
 - Coinpaprika: https://coinpaprika.com/coin/wart-warthog/
 - Livecoinwatch: https://www.livecoinwatch.com/price/WarthogNetwork-WART
+- DeFi Demo: https://warthog.network/defi-demo
 ])
 
+#pagebreak()
 #bibliography("cite.bib")
