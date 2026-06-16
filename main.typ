@@ -284,7 +284,7 @@ For efficiency and compactness transaction fees are encoded as 2-byte floating-p
 #pagebreak()
 
 
-= Roadmap 2024 - 2025
+= Roadmap 2024 - 2026
 - [x] New "herominers" pool support (please aim for pool decentralization)
 - [/] Collect sufficient donation funds
 - [/] New website with design by BalkyBot (logo designer)
@@ -313,6 +313,10 @@ In this whitepaper we have presented the Warthog Network crypto project which st
 
 = Block Structure
 
+#block[
+#set text(size: 0.9em)
+#emph[Note:] This section describes the in-block body structure (what is stored in the chain), not the signed hash input that gets signed by users. For the signed transaction format, see the "Signed Transaction Format" section below.
+]
 
 The binary content of a block is a concatenation of the following sections in their specified order:
 
@@ -326,7 +330,6 @@ The binary content of a block is a concatenation of the following sections in th
 + Liquidity deposit section
 + Liquidity withdrawal section
 + Cancelation section
-+ Match section
 
 Below we describe the above sections. All numbers and id values are in network byte order.
 
@@ -350,7 +353,7 @@ This section lists new addresses that receive payments in this block and therefo
 
 #bytetable([New Address Section],
     [1-4], [number  `n` of new addresses],
-    [5-(4+n*20)], [`n` addressess of 20 bytes each])
+    [5-(4+`n`\*20)], [`n` addressess of 20 bytes each])
 
 
 Miners are responsible to ensure that the addresses appearing in the new address section are not already present in the state table and are actually referenced in this block. Otherwise the block is considered invalid.
@@ -381,43 +384,21 @@ The transfer section contains the transfers made in this block. Its binary outli
 
 #bytetable([Transfer Section],
 [1-4], [number `t` of transfer entries],
-[5-(4+t*99)], [`t` transfer entries]
+[5-(4+`t`\*99)], [`t` transfer entries]
 )
 
 Every transfer entry has the following structure:
 
 #bytetable( [Transfer structure],
     [1-8], [fromAccountId],
-    [9-16], [pinNonce], 
-    [17-18], [fee], 
-    [19-26], [toAccountId], 
-    [27-34], [amount], 
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-26], [toAccountId],
+    [27-34], [amount],
     [35-99], [recoverable signature (65 bytes)]
 )
 
 Each payment entry has length 99 bytes. Compare this to the average transaction size of around 200 bytes per Bitcoin transfer.
-== Asset Creation Section
-
-The asset creation section contains transactions that create new tokens on the Warthog network. Asset names can have at most 5 alphanumeric (`[a-zA-Z0-9]`) characters and must be unique across the network. When an asset is created, the entire initial supply is credited to the creator's account.
-
-#bytetable([Asset Creation Section],
-    [1-4], [number `a` of asset creation entries],
-    [5-(4+a*73)], [`a` asset creation entries]
-)
-
-Every asset creation entry has the following structure:
-
-#bytetable([Asset creation entry],
-    [1-8], [creatorAccountId],
-    [9-16], [pinNonce],
-    [17-18], [fee],
-    [19-23], [asset name (5 bytes, null-padded)],
-    [24-31], [total supply (uint64)],
-    [32-32], [decimals (1 byte)],
-    [33-97], [recoverable signature (65 bytes)]
-)
-
-The decimals field specifies how many decimal places the asset supports, affecting how token amounts are interpreted in fixed-point arithmetic.
 
 == Token Transfer Section
 
@@ -425,7 +406,7 @@ The token transfer section handles transfers of non-WART tokens, including both 
 
 #bytetable([Token Transfer Section],
     [1-4], [number `t` of token transfer entries],
-    [5-(4+t*106)], [`t` token transfer entries]
+    [5-(4+`t`\*112)], [`t` token transfer entries]
 )
 
 Every token transfer entry has the following structure:
@@ -434,13 +415,37 @@ Every token transfer entry has the following structure:
     [1-8], [fromAccountId],
     [9-16], [pinNonce],
     [17-18], [fee],
-    [19-26], [toAccountId],
-    [27-30], [assetId],
-    [31-46], [amount (16 bytes, asset-specific precision)],
-    [47-111], [recoverable signature (65 bytes)]
+    [19-50], [assetHash (32 bytes)],
+    [51-51], [isLiquidity flag (1 byte)],
+    [52-71], [toAccountId],
+    [72-79], [amount (uint64)],
+    [80-144], [recoverable signature (65 bytes)]
 )
 
-The `isLiquidity` flag, which indicates whether the transferred token is an asset or a liquidity token, is determined by the asset ID referencing either a standard asset or a liquidity pool's share token.
+The `isLiquidity` flag indicates whether the transferred token is the asset itself (value `0`) or the pool's liquidity share token (value `1`). Liquidity shares are always at precision 8, while asset amounts use the asset's own precision.
+
+== Asset Creation Section
+
+The asset creation section contains transactions that create new tokens on the Warthog network. Asset names can have at most 5 alphanumeric (`[a-zA-Z0-9]`) characters and must be unique across the network. When an asset is created, the entire initial supply is credited to the creator's account.
+
+#bytetable([Asset Creation Section],
+    [1-4], [number `a` of asset creation entries],
+    [5-(4+`a`\*79)], [`a` asset creation entries]
+)
+
+Every asset creation entry has the following structure:
+
+#bytetable([Asset creation entry],
+    [1-8], [creatorAccountId],
+    [9-16], [pinNonce],
+    [17-18], [fee],
+    [19-26], [total supply (uint64)],
+    [27-27], [decimals (1 byte)],
+    [28-32], [asset name (5 bytes, null-padded)],
+    [33-97], [recoverable signature (65 bytes)]
+)
+
+The decimals field specifies how many decimal places the asset supports, affecting how token amounts are interpreted in fixed-point arithmetic.
 
 == Limit Swap Section
 
@@ -448,7 +453,7 @@ The limit swap section contains buy and sell orders for the decentralized exchan
 
 #bytetable([Limit Swap Section],
     [1-4], [number `l` of limit swap entries],
-    [5-(4+l*90)], [`l` limit swap entries]
+    [5-(4+`l`\*105)], [`l` limit swap entries]
 )
 
 Every limit swap entry has the following structure:
@@ -457,14 +462,14 @@ Every limit swap entry has the following structure:
     [1-8], [accountId],
     [9-16], [pinNonce],
     [17-18], [fee],
-    [19-22], [assetId],
-    [23-30], [amount],
-    [31-46], [limit price (16 bytes, encoded price)],
-    [47-47], [buy/sell flag (1 byte)],
-    [48-112], [recoverable signature (65 bytes)]
+    [19-50], [assetHash (32 bytes)],
+    [51-51], [buy/sell flag (1 byte)],
+    [52-59], [amount (uint64)],
+    [60-62], [limit price (3 bytes, encoded price)],
+    [63-127], [recoverable signature (65 bytes)]
 )
 
-The buy/sell flag determines the direction of the order: a value of `1` indicates a buy order (trader wants to purchase the asset with WART), while `0` indicates a sell order (trader wants to sell the asset for WART).
+The buy/sell flag determines the direction of the order: a value of `1` indicates a buy order (trader wants to purchase the asset with WART), while `0` indicates a sell order (trader wants to sell the asset for WART). The 3-byte limit price uses the Price_uint64 encoding (16-bit mantissa + 8-bit exponent).
 
 == Liquidity Deposit Section
 
@@ -472,7 +477,7 @@ The liquidity deposit section records deposits of base asset and WART into liqui
 
 #bytetable([Liquidity Deposit Section],
     [1-4], [number `d` of liquidity deposit entries],
-    [5-(4+d*97)], [`d` liquidity deposit entries]
+    [5-(4+`d`\*108)], [`d` liquidity deposit entries]
 )
 
 Every liquidity deposit entry has the following structure:
@@ -481,10 +486,10 @@ Every liquidity deposit entry has the following structure:
     [1-8], [accountId],
     [9-16], [pinNonce],
     [17-18], [fee],
-    [19-22], [assetId],
-    [23-38], [base amount],
-    [39-54], [quote amount (WART)],
-    [55-119], [recoverable signature (65 bytes)]
+    [19-50], [assetHash (32 bytes)],
+    [51-58], [base amount (uint64)],
+    [59-66], [quote amount / WART (uint64)],
+    [67-131], [recoverable signature (65 bytes)]
 )
 
 The liquidity pool automatically calculates the number of liquidity tokens to mint based on the deposited amounts and current pool reserves.
@@ -495,7 +500,7 @@ The liquidity withdrawal section records redemptions of liquidity pool shares fo
 
 #bytetable([Liquidity Withdrawal Section],
     [1-4], [number `w` of liquidity withdrawal entries],
-    [5-(4+w*89)], [`w` liquidity withdrawal entries]
+    [5-(4+`w`\*99)], [`w` liquidity withdrawal entries]
 )
 
 Every liquidity withdrawal entry has the following structure:
@@ -504,9 +509,9 @@ Every liquidity withdrawal entry has the following structure:
     [1-8], [accountId],
     [9-16], [pinNonce],
     [17-18], [fee],
-    [19-22], [assetId],
-    [23-38], [shares redeemed],
-    [39-103], [recoverable signature (65 bytes)]
+    [19-50], [assetHash (32 bytes)],
+    [51-58], [shares redeemed (uint64)],
+    [59-123], [recoverable signature (65 bytes)]
 )
 
 == Cancelation Section
@@ -515,7 +520,7 @@ The cancelation section contains references to transactions that should be inval
 
 #bytetable([Cancelation Section],
     [1-4], [number `c` of cancelation entries],
-    [5-(4+c*49)], [`c` cancelation entries]
+    [5-(4+`c`\*78)], [`c` cancelation entries]
 )
 
 Every cancelation entry has the following structure:
@@ -523,34 +528,151 @@ Every cancelation entry has the following structure:
 #bytetable([Cancelation entry],
     [1-8], [accountId],
     [9-16], [pinNonce],
-    [17-20], [pinHeight],
-    [21-38], [recoverable signature (18 bytes)]
+    [17-20], [pinHeight (uint32)],
+    [21-24], [cancelNonceId (uint32)],
+    [25-89], [recoverable signature (65 bytes)]
 )
 
 Once a transaction is canceled, it cannot be included in any future block, effectively blocking it from execution.
+#pagebreak()
+= Signed Transaction Format
 
-== Match Section
+#block[
+#set text(size: 0.9em)
+#emph[Note:] This section describes the byte structure of what users sign (the pre-image that is hashed and then signed). For the in-block body structure, see the "Block Structure" section above. When a signed transaction is included in a block, the node recovers the signer's address from the signature and stores the entry in the body using that account id.
+]
 
-The match section is an implicit transaction generated by the node during block processing. It records the result of the Fair Batch Matching algorithm applied to all swap orders and liquidity pool interactions within the block.
+Warthog transactions come in two categories. *Signed transactions* are created by users (via wallets), signed with their private key, and submitted to the node for inclusion in a block. *Implicit transactions* are produced by the node itself during block processing and are not signed by any user. The table below lists all transaction types and their signed/implicit status.
 
-#bytetable([Match Section],
-    [1-4], [number `m` of match entries],
-    [5-(4+m*81)], [`m` match entries]
+== Signed and Implicit Transactions
+
+#table(
+  columns: 3,
+  align: (left, center, left),
+  table.header([*Type*], [*Signed*], [*Description*]),
+  `wartTransfer`, [Yes], [Transfer WART to another account],
+  `tokenTransfer`, [Yes], [Transfer a non-WART token (asset or liquidity share)],
+  `assetCreation`, [Yes], [Create a new asset],
+  `cancelation`, [Yes], [Cancel a pending transaction or order],
+  `liquidityDeposit`, [Yes], [Deposit liquidity into a pool],
+  `liquidityWithdrawal`, [Yes], [Withdraw liquidity from a pool],
+  `limitSwap`, [Yes], [Create a buy/sell limit order on the DEX],
+  `reward`, [No], [Block reward paid to the miner; generated implicitly by the node during block processing],
+  [`match`], [No], [Result of Fair Batch Matching; computed implicitly by the node during block processing and surfaced via the API, not stored in the block body],
 )
 
-Every match entry has the following structure:
+== Common Prefix (all signed transactions)
 
-#bytetable([Match entry],
-    [1-4], [assetId],
-    [5-20], [pool base before (16 bytes)],
-    [21-36], [pool quote before (16 bytes)],
-    [37-52], [pool base after (16 bytes)],
-    [53-68], [pool quote after (16 bytes)],
-    [69-76], [buy swaps count + offset],
-    [77-81], [sell swaps count + offset]
+All signed transactions share the following common prefix in the byte sequence that is hashed and signed:
+
+#bytetable([Common signed-transaction prefix],
+    [1-32], [pinHash (32 bytes; hash of the block at pinHeight)],
+    [33-36], [pinHeight (uint32, network byte order)],
+    [37-40], [nonceId (uint32, network byte order)],
+    [41-43], [reserved (3 zero bytes)],
+    [44-45], [compactFee (2 bytes)],
 )
 
-The match entry records the state of the liquidity pool before and after the FBM matching, along with references to the individual swaps. The buySwaps and sellSwaps arrays, which can be empty for blocks with no matching activity, contain the history IDs of the matched orders and the amounts swapped in each direction.
+The signed bytes are:
+
+```
+SHA256(
+  pinHash
+  || pinHeight
+  || nonceId
+  || reserved
+  || compactFee
+  || transaction-specific fields
+)
+```
+
+The 65-byte recoverable signature is then computed over this hash and stored alongside the body. The `pinHash` itself is prepended for hashing only and is not part of the in-block body.
+
+The compactFee is a 16-bit compact floating-point encoding: 6-bit exponent plus 10-bit mantissa (with implicit leading 1). Only values exactly representable in 16 bits are accepted. See the node's `/tools/encode16bit/` endpoints for client-side rounding.
+
+== WartTransfer
+
+Transfers WART to a recipient address.
+
+#bytetable([WartTransfer transaction-specific bytes (after 45-byte common prefix)],
+    [46-65], [toAddress (20 bytes, without checksum)],
+    [66-73], [wartE8 (uint64 BE, amount in smallest WART units)],
+)
+
+Total signed input: 73 bytes. Signature: 65 bytes.
+
+== TokenTransfer
+
+Transfers a non-WART token (either the asset itself or a pool's liquidity share) to a recipient.
+
+#bytetable([TokenTransfer transaction-specific bytes (after 45-byte common prefix)],
+    [46-77], [assetHash (32 bytes)],
+    [78], [isLiquidity flag (1 byte: `0` = asset, `1` = liquidity share)],
+    [79-98], [toAddress (20 bytes, without checksum)],
+    [99-106], [amountU64 (uint64 BE, smallest asset units)],
+)
+
+Total signed input: 106 bytes. Signature: 65 bytes. The `isLiquidity` flag distinguishes between transferring the asset itself versus the pool's liquidity share token.
+
+== LimitSwap
+
+Creates a buy or sell limit order for a specific asset on the DEX. Buy orders spend WART; sell orders sell asset units.
+
+#bytetable([LimitSwap transaction-specific bytes (after 45-byte common prefix)],
+    [46-77], [assetHash (32 bytes)],
+    [78], [buy/sell flag (1 byte: `1` = buy, `0` = sell)],
+    [79-86], [amountU64 (uint64 BE; WART E8 for buy, asset units for sell)],
+    [87-89], [limit price (3 bytes, Price_uint64: 16-bit mantissa + 8-bit exponent)],
+)
+
+Total signed input: 89 bytes. Signature: 65 bytes.
+
+== LiquidityDeposit
+
+Deposits a base asset and WART into a liquidity pool, receiving LP shares in return.
+
+#bytetable([LiquidityDeposit transaction-specific bytes (after 45-byte common prefix)],
+    [46-77], [assetHash (32 bytes)],
+    [78-85], [base amount (uint64 BE, smallest asset units)],
+    [86-93], [quote amount / WART (uint64 BE, smallest WART units)],
+)
+
+Total signed input: 93 bytes. Signature: 65 bytes.
+
+== LiquidityWithdrawal
+
+Redeems liquidity pool shares to withdraw the underlying base asset and WART.
+
+#bytetable([LiquidityWithdrawal transaction-specific bytes (after 45-byte common prefix)],
+    [46-77], [assetHash (32 bytes)],
+    [78-85], [shares redeemed (uint64 BE, smallest LP share units)],
+)
+
+Total signed input: 85 bytes. Signature: 65 bytes.
+
+== Cancelation
+
+Cancels a pending transaction or an open order, identified by the original transaction's `(pinHeight, nonceId)`.
+
+#bytetable([Cancelation transaction-specific bytes (after 45-byte common prefix)],
+    [46-49], [cancelHeight / pinHeight (uint32 BE)],
+    [50-53], [cancelNonceId (uint32 BE)],
+)
+
+Total signed input: 53 bytes. Signature: 65 bytes.
+
+== AssetCreation
+
+Creates a new asset with a name, precision, and total supply. The entire initial supply is credited to the creator.
+
+#bytetable([AssetCreation transaction-specific bytes (after 45-byte common prefix)],
+    [46-53], [total supply (uint64 BE, smallest asset units)],
+    [54], [precision (1 byte, 0-18 decimal places)],
+    [55-59], [asset name (5 bytes, null-padded ASCII)],
+)
+
+Total signed input: 59 bytes. Signature: 65 bytes.
+
 #pagebreak()
 #par(justify:false, [
 = Link Collection
