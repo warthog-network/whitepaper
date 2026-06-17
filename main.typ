@@ -335,7 +335,7 @@ Below we describe the above sections. All numbers and id values are in network b
 
 == Mining section
 
-This section allows miners to put 4 bytes of arbitrary data to affect the merkle hash.
+This section allows miners to put 10 bytes of arbitrary data to affect the merkle hash.
 
 #let bytetable(caption,..entries) = {
 figure(
@@ -345,7 +345,7 @@ figure(
 }
 
 #bytetable([Mining Section],
-    [1-4], [arbitrary data])
+    [1-10], [arbitrary data])
 
 == New address section
 
@@ -534,6 +534,67 @@ Every cancelation entry has the following structure:
 )
 
 Once a transaction is canceled, it cannot be included in any future block, effectively blocking it from execution.
+#pagebreak()
+= Fair Batch Matching
+
+The mathematical statement of the _Fair Batch Matching_ (FBM) theorem (existence and uniqueness of a fair equilibrium price) is given above and in CoinFu MasterShifu's paper @fairbatchmatching. This section explains how the algorithm behaves in practice, in terms that a user interacting with the DEX can verify on the explorer.
+
+The mathematical definition of FBM can be hard to internalize. The intuitive way to think about it, and the way the theory was developed, is to imagine that each side of the market is driven by individual selfish actors that want to achieve the best conversion rate. Liquidity from the order book can be 
+1. *unmatched*,
+1. matched with the *other side of the order book* or
+2. matched with the *liquidity pool*.
+
+If the liquidity pool is non-empty, i.e. has reserves of base and quote assets, it can be used to by these actors as long as it offers a better conversion rate than matching with the other side of the order book.
+
+== Iterative Mental Model
+While we have implemented Fair Batch Matching as a bisection algorithm, for better understanding we can imagine it as an iterative process: For each matching constellation we can ask what selfish actors would do differently to achieve better conversion rate.
+If the pool is currently offering a better price than the standing limit orders on the other side, liquidity will be partially offloaded to the pool. Conversely, if pool price is worse than the other side of the order book, actors will reduce the pool converted amount of funds and choose the liquidity from the order book. It can even bebeneficial to partially match a single order and split the matched amount between the other side of the order book and the pool.
+
+This leads to an iterative thought process where either buyers or sellers want to optimize their conversion rate until there is nothing that can be optimized and in this case we have found the _Nash equilibrium_ which we have shown is unique and which is the Fair Batch Matching.
+
+=== Examples
+
+In the iterative mental model each side picks the better deal for itself.
+
+- If the pool price is better for buyers than the standing sell orders, buyers go to the pool until pool price reaches the best sell order.
+- If the pool price is better for sellers than the standing buy orders, sellers go to the pool until pool price reaches the best buy order.
+- Once the pool price matches a limit order, that order takes over for additional liquidity on that side.
+- If a trade is larger than the pool can provide before its price would cross a limit order, the part that fits in the pool is filled there, the rest matches against the order book.
+- Low-reserve pools move price quickly with each trade, so partial pool + partial order book fills are common in those markets.
+- In a market with no limit orders on one side, all of that side's flow goes through the pool.
+- In a market with no pool yet, all trading is direct order book matching.
+
+== Counter-Order Paradox
+
+A frequent surprise: a buy order and a sell order are placed at same price but the sell is unfilled, while the buy order is reported as fully filled. What happened?
+
+The order was not on the other side of the order book in the way one would intuitively expect. It was sitting on a market that also has a liquidity pool. As described above, if the pool price is not picked to be exactly equal to the order price, it is beneficial for one side to go to the pool rather than match with the other side of the order book. The pool then satisfies that side's trade, and the order's counter does not move.
+
+In a market with no pool, the two orders would have matched against each other. The presence of a pool changes the dynamics: matching is always done at the equilibrium that gives every participant the best available deal, which is not always the same as "match with the standing order on the other side".
+
+This is not a bug. It is the FBM equilibrium at work. If a user wants to force a match against the order book rather than the pool, they need to set a limit price that crosses the pool price enough to make matching against their order the better choice for the other side.
+
+== Same Price Orders
+
+=== Price Level Aggregation
+
+The FBM matching algorithm does not allow multiple orders at the same price: it sees only the total amount at each price level. In order to support same price orders, the node proceeds by, before matching, grouping orders that share a price level, summing their amounts into a single effective entry per price, running the FBM algorithm on the aggregated levels, and then post-processing to figure out which individual orders were actually filled.
+
+
+=== Fill Priority
+
+When multiple orders share the same price level and the matched liquidity is less than the total amount of all orders at this price level, the node has to decide which of these orders are filled. The _fill priority_ used here is decreasing in the internal _order id_, which is itself increasing in block height. This means that orders mined in earlier blocks have higher priority. Within a single block, the miner can arange the order in which transactions are included, which means the miner has control over the fill priority of same-price orders in that block. 
+
+However, since all buyers and all sellers receive the same price, this priority only determines whether an order is matched at all but not the matching price.
+
+== Pool Mechanics
+
+Every asset automatically receives a WART liquidity pool as quote currency. The pool follows the standard constant-product market maker formula (the same math Uniswap uses): when exchanging assets with the pool, the product of the two reserve amounts stays constant. The current price (the marginal conversion rate for an infinitesimally small trade) is the quotient of the two reserve amounts: if the pool holds $B$ units of base and $Q$ units of WART, the current price is $Q / B$ (WART per unit of base). There are no upper or lower price boundaries set on the pool. A pool with very low reserves moves price dramatically on each trade; a deep pool is relatively stable.
+
+Each swap through a pool pays a small fee. The current default in the testnet is *0.10% (10 basis points)*. The fee is retained in the pool rather than sent to a separate recipient. After each swap, the product of the two reserve amounts does not stay constant but instead *increases* slightly, by the fee. Over time, as more trades occur, the pool's reserves grow beyond what would be expected from a pure constant-product model. This benefits the liquidity providers, who own shares of the pool proportional to their contribution. When they withdraw, they receive their share of the (now larger) pool.
+
+In other words: the fee is paid by traders and accumulated by the pool. It is not extracted to any external address. Traders pay a small fee, liquidity providers earn that fee proportional to their share, and the pool itself grows over time.
+
 #pagebreak()
 = Signed Transaction Format
 
