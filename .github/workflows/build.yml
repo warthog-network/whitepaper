@@ -15,5 +15,5 @@ jobs:
       - name : release pdf
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build
+          tag_name: build-${{ github.SHA }}
           files: main.pdf
